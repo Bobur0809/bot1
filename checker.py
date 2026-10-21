@@ -46,20 +46,44 @@ MAX_POINTS = int(os.environ.get("MAX_POINTS", "500"))
 STEP = int(os.environ.get("POINTS_STEP", "50"))
 MIN_POINTS = int(os.environ.get("MIN_POINTS", "100"))
 CHALLENGE_ID = os.environ.get("CHALLENGE_ID", "webctf")
+DEADLINE = os.environ.get("DEADLINE", "").strip()
 
 STATE_MARK = "📊 REYTING MA'LUMOTLARI (o'chirmang, unpin qilmang)"
 
+
+def _card() -> str:
+    """Topshiriq matni — yo'nalish beradi, lekin yechimni oshkor qilmaydi."""
+    lines = [
+        "🏢 <b>Zafar Corp — Ichki Portal</b>",
+        "📂 Kategoriya: <b>WEB</b> · Qiyinlik: <b>Medium</b>",
+        "",
+        "\"Zafar Corp\" kompaniyasining ichki boshqaruv paneli tasodifan "
+        "internetga ochilib qolgan. Oddiy xodim darajasida kirish mumkin — "
+        "lekin eng qimmatli sir faqat <b>administrator</b> ko'radigan joyda "
+        "yashiringan. 🕵️",
+        "",
+        "Eshikni top, ichkariga kir va o'z huquqingni oshir. "
+        "Administrator bo'lsang — sir seniki.",
+        "",
+        "🚩 Flag formati: <code>CTF{...}</code>",
+    ]
+    if DEADLINE:
+        lines.append(f"⏰ Muddat: {html.escape(DEADLINE)}")
+    return "\n".join(lines)
+
+
+CARD = _card()
+
 TEXTS = {
     "start": (
-        "🚩 <b>Flag tekshiruvchi</b>\n\n"
-        "1️⃣ Avval /boshla yozing — sizga <b>shaxsiy havola</b> beraman.\n"
-        "2️⃣ O'sha havola orqali saytga kiring va flagni toping.\n"
-        "3️⃣ Topgan flagingizni shu yerga yuboring.\n\n"
+        CARD + "\n\n"
+        "1️⃣ Shaxsiy havola olish: /boshla\n"
+        "2️⃣ Topgan flagingizni shu yerga yuboring\n"
         "🏆 Reyting: /reyting"
     ),
     "boshla": (
-        "🔗 <b>Sizning shaxsiy havolangiz:</b>\n\n"
-        "{link}\n\n"
+        CARD + "\n\n"
+        "🔗 <b>Sizning shaxsiy havolangiz:</b>\n{link}\n\n"
         "⚠️ Bu havola faqat sizniki. Flagingiz ham shaxsiy — boshqaga bermang, "
         "aks holda kim bergani aniqlanadi!"
     ),
