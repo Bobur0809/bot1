@@ -102,6 +102,11 @@ TEXTS = {
         "🚨 Bu flag <b>sizniki emas</b> — boshqa ishtirokchiga tegishli.\n"
         "Har kimning flagi shaxsiy! O'z flagingizni toping: /boshla"
     ),
+    "demo": (
+        "😄 Bu <b>demo flag</b>, yigitcha!\n"
+        "Saytga shaxsiy havolasiz kirgansiz. O'z flagingiz uchun /boshla yozing "
+        "va <b>shaxsiy havolangiz</b> orqali qaytadan kiring."
+    ),
     "wrong": "❌ Noto'g'ri flag. Yana urinib ko'ring!",
     "empty": "🏆 Reyting hozircha bo'sh. Birinchi bo'lib yech va 🩸 First Blood ol!",
 }
@@ -272,6 +277,10 @@ def build(flag_secret: bytes, link_secret: bytes, site_url: str,
 
         # O'z flagi emasmi? (share aniqlash)
         if submitted != expected:
+            # Demo flag (saytga havolasiz kirganda chiqadi) — do'stona ogohlantirish
+            if submitted == flag_for("demo", flag_secret):
+                await m.answer(TEXTS["demo"])
+                return
             owner = owner_of(submitted)
             if owner is not None and owner != uid:
                 logging.warning("shared flag: submitter=%s owner=%s", uid, owner)
