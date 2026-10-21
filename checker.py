@@ -64,8 +64,7 @@ def _card() -> str:
         "lekin eng qimmatli sir faqat <b>administrator</b> ko'radigan joyda "
         "yashiringan. 🕵️",
         "",
-        "Eshikni top, ichkariga kir va o'z huquqingni oshir. "
-        "Administrator bo'lsang — sir seniki.",
+        "Eshikni top, ichkariga kir — qolgani o'zingga bog'liq. 🔑",
         "",
         "🚩 Flag formati: <code>CTF{...}</code>",
     ]
