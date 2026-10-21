@@ -290,6 +290,14 @@ def build(flag_secret: bytes, link_secret: bytes, site_url: str,
             await m.answer(TEXTS["wrong"])
             return
 
+        # Admin test: flag to'g'ri, lekin reytingga yozilmaydi (First Blood o'g'irlanmasin)
+        if admin_id is not None and u.id == admin_id:
+            await m.answer(
+                "✅ <b>To'g'ri!</b> Flag ishlayapti.\n"
+                "🧪 <i>Admin test</i> — reytingga qo'shilmadi 😉"
+            )
+            return
+
         # To'g'ri — o'z flagi
         async with lock:
             store.participants.add(uid)
