@@ -1,0 +1,48 @@
+name: checker
+
+# 24/7 ishlash: har run ~5h45m ishlaydi, keyin o'zini qayta ishga tushiradi.
+# Zaxira sifatida har 6 soatda cron ham ishga tushiradi (agar zanjir uzilsa).
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 */6 * * *"
+
+permissions:
+  actions: write      # o'zini qayta ishga tushirish uchun
+  contents: read
+
+concurrency:
+  group: checker-bot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: O'rnatish
+        run: pip install -r requirements.txt
+
+      - name: Botni ishga tushirish
+        env:
+          CHECKER_TOKEN:   ${{ secrets.CHECKER_TOKEN }}
+          FLAG_SECRET:     ${{ secrets.FLAG_SECRET }}
+          LINK_SECRET:     ${{ secrets.LINK_SECRET }}
+          SITE_URL:        ${{ secrets.SITE_URL }}
+          CHALLENGE_ID:    ${{ secrets.CHALLENGE_ID }}
+          ADMIN_CHAT_ID:   ${{ secrets.ADMIN_CHAT_ID }}
+          ANNOUNCE_CHAT_ID: ${{ secrets.ANNOUNCE_CHAT_ID }}
+          RUN_SECONDS: "20700"
+        run: python checker.py
+
+      - name: Keyingi runni ulash (zanjir)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run checker.yml
