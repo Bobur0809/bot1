@@ -243,7 +243,9 @@ def build(flag_secret: bytes, link_secret: bytes, site_url: str,
                 store.participants.add(uid)
                 await store.save()
         link = challenge_link(uid, site_url, link_secret)
-        await m.answer(TEXTS["boshla"].format(link=html.escape(link)), disable_web_page_preview=True)
+        # .format() ishlatmaymiz: topshiriq matnidagi CTF{...} qavslari buzadi
+        text = TEXTS["boshla"].replace("{link}", html.escape(link))
+        await m.answer(text, disable_web_page_preview=True)
 
     @dp.message(Command("reyting", "reyt", "scoreboard", "top"))
     async def rating(m: Message) -> None:
