@@ -38,6 +38,13 @@ jobs:
           CHALLENGE_ID:    ${{ secrets.CHALLENGE_ID }}
           ADMIN_CHAT_ID:   ${{ secrets.ADMIN_CHAT_ID }}
           ANNOUNCE_CHAT_ID: ${{ secrets.ANNOUNCE_CHAT_ID }}
+          DEADLINE:        ${{ secrets.DEADLINE }}
+          # Ball formulasi: 1-o'rin MAX, har keyingi -STEP, MIN'dan kam emas
+          MAX_POINTS: "500"
+          POINTS_STEP: "10"
+          MIN_POINTS: "100"
+          # Eski STEP (bir martalik qayta hisoblash uchun — eski ballar yangisiga moslanadi)
+          OLD_POINTS_STEP: "50"
           RUN_SECONDS: "20700"
         run: python checker.py
 

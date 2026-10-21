@@ -43,8 +43,10 @@ except Exception:
     TZ = timezone(timedelta(hours=5))
 
 MAX_POINTS = int(os.environ.get("MAX_POINTS", "500"))
-STEP = int(os.environ.get("POINTS_STEP", "50"))
+STEP = int(os.environ.get("POINTS_STEP", "10"))
 MIN_POINTS = int(os.environ.get("MIN_POINTS", "100"))
+# Eski ballarni qayta hisoblash uchun eski STEP (bir martaga ishlaydi).
+OLD_STEP = int(os.environ.get("OLD_POINTS_STEP", "50"))
 CHALLENGE_ID = os.environ.get("CHALLENGE_ID", "webctf")
 DEADLINE = os.environ.get("DEADLINE", "").strip()
 
@@ -178,6 +180,30 @@ class Store:
         rec.setdefault("user", "")
         return rec
 
+    @staticmethod
+    def _rescale_total(old_total: int, old_step: int, new_step: int,
+                       n_tasks: int, max_pts: int, min_pts: int) -> int:
+        """Eski jami ballni yangi STEP bilan qayta hisoblash.
+
+        Bitta task yechgan foydalanuvchi uchun aniq ishlaydi:
+        eski ball -> o'rin -> yangi ball. Bir necha task yechgan bo'lsa,
+        har task o'rtacha o'rinni berdi deb hisoblanadi (taxminiy).
+        """
+        if n_tasks <= 0 or old_step <= 0:
+            return old_total
+        # Har task bo'yicha o'rtacha ball = jami / tasklar soni
+        per_task_old = old_total // n_tasks
+        # eski formula: pts = max(min, max - step*(place-1))  =>  place = (max-pts)/step + 1
+        if per_task_old > min_pts:
+            # Aniq o'rinni tiklash mumkin
+            place = max(1, (max_pts - per_task_old) // old_step + 1)
+            per_task_new = max(min_pts, max_pts - new_step * (place - 1))
+        else:
+            # Eski ballda min_pts ga tushib floor bo'lgan — o'rin aniq emas.
+            # min_pts ni saqlab qolamiz (hadsiz ko'tarilib ketmasin).
+            per_task_new = min_pts
+        return per_task_new * n_tasks
+
     async def load(self) -> None:
         if self.admin_id is None:
             return
@@ -189,6 +215,21 @@ class Store:
                 self.solves = [self._migrate(r) for r in data.get("solves", [])]
                 self.participants = set(data.get("participants", []))
                 self.msg_id = pinned.message_id
+                # Bir martalik qayta hisoblash: STEP o'zgargan bo'lsa, eski ballarni moslash.
+                rescaled_with = data.get("rescaled_step")
+                if rescaled_with != STEP and OLD_STEP != STEP:
+                    before = sum(r.get("total", 0) for r in self.solves)
+                    for r in self.solves:
+                        n = len(r.get("solved", []))
+                        r["total"] = self._rescale_total(
+                            r.get("total", 0), OLD_STEP, STEP, n,
+                            MAX_POINTS, MIN_POINTS,
+                        )
+                    after = sum(r.get("total", 0) for r in self.solves)
+                    self._rescaled = True
+                    logging.info("ballar qayta hisoblandi: step %d -> %d, jami %d -> %d",
+                                 OLD_STEP, STEP, before, after)
+                    await self.save()
                 logging.info(
                     "yuklandi: %d yozuv, %d ishtirokchi",
                     len(self.solves), len(self.participants),
@@ -199,7 +240,11 @@ class Store:
     async def save(self) -> None:
         if self.admin_id is None:
             return
-        payload = {"solves": self.solves, "participants": sorted(self.participants)}
+        payload = {
+            "solves": self.solves,
+            "participants": sorted(self.participants),
+            "rescaled_step": STEP,
+        }
         text = STATE_MARK + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
         try:
             if self.msg_id is not None:
