@@ -30,6 +30,7 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Generatorni tiklash
+        id: gen
         env:
           REV_PATCH_B64: ${{ secrets.REV_PATCH_B64 }}
         run: |
@@ -54,8 +55,8 @@ jobs:
         run: python checker.py
 
       - name: Keyingi runni ulash (zanjir)
-        # Bekor qilinganda qayta ishga tushmaydi; xato yoki muddat tugaganda ulanadi
-        if: ${{ !cancelled() }}
+        # Bekor qilinganda yoki secret yo'q bo'lsa qayta ishga tushmaydi (cheksiz aylanmasin)
+        if: ${{ !cancelled() && steps.gen.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh workflow run checker.yml
