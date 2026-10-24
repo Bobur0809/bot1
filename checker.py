@@ -113,10 +113,7 @@ TEXTS = {
         "⚠️ Bu havola faqat sizniki. Flagingiz ham shaxsiy — boshqaga bermang, "
         "aks holda kim bergani aniqlanadi!"
     ),
-    "fake": (
-        "😏 Bu <b>soxta flag</b> — tuzoqqa tushdingiz!\n"
-        "Haqiqiy flag do'konni <b>ishlatib</b> topiladi, buzib emas. 🧾"
-    ),
+    "fake": "😏 Bu <b>soxta flag</b> — tuzoqqa tushdingiz! Yaxshilab izlang.",
     "need_start": "Avval /boshla yozing — sizga shaxsiy havola beraman. 🔗",
     "first_blood": (
         "🩸 <b>FIRST BLOOD!</b> 🩸\n\n"
