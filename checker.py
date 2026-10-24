@@ -6,10 +6,8 @@ olingan ball ustiga qo'shiladi.
 
 Ishga tushirish:
     export CHECKER_TOKEN=123456:ABC...        # tekshiruvchi bot tokeni
-    export FLAG_SECRET='...'                   # sayt bilan BIR XIL maxfiy kalit
-    export LINK_SECRET='...'                   # shaxsiy havola imzosi uchun
-    export SITE_URL='https://xxx.trycloudflare.com'  # CTF sayti manzili
-    export CHALLENGE_ID='webctf'               # bu task nomi (har task uchun boshqa)
+    export FLAG_SECRET='...'                   # shaxsiy flaglar uchun maxfiy kalit
+    export CHALLENGE_ID='revseyf'              # bu task nomi (har task uchun boshqa)
     export ADMIN_CHAT_ID=123456789            # signal + reyting saqlanadigan joy
     export ANNOUNCE_CHAT_ID=-100123...        # ixtiyoriy: First Blood e'loni
     export RUN_SECONDS=20700                   # ixtiyoriy: avto-to'xtash
@@ -17,7 +15,6 @@ Ishga tushirish:
 
 Eski ballar o'z-o'zidan saqlanadi: bot o'sha ADMIN_CHAT_ID dagi pin qilingan
 xabardan reytingni o'qiydi (o'sha xabarni o'chirmang, unpin qilmang).
-FLAG_SECRET saytdagi (docker-compose.yml) bilan AYNAN bir xil bo'lishi SHART.
 """
 
 import asyncio
@@ -49,10 +46,9 @@ STEP = int(os.environ.get("POINTS_STEP", "10"))
 MIN_POINTS = int(os.environ.get("MIN_POINTS", "100"))
 # Eski ballarni qayta hisoblash uchun eski STEP (bir martaga ishlaydi).
 OLD_STEP = int(os.environ.get("OLD_POINTS_STEP", "50"))
-CHALLENGE_ID = os.environ.get("CHALLENGE_ID", "webctf")
+CHALLENGE_ID = os.environ.get("CHALLENGE_ID", "").strip() or "revseyf"
 DEADLINE = os.environ.get("DEADLINE", "").strip()
-TASK_TYPE = os.environ.get("TASK_TYPE", "web").strip().lower()
-FLAG_PREFIX = os.environ.get("FLAG_PREFIX", "zafar_").strip() or "zafar_"
+FLAG_PREFIX = "rev_"
 REV_TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "revtask", "seyf_template")
 
 STATE_MARK = "📊 REYTING MA'LUMOTLARI (o'chirmang, unpin qilmang)"
@@ -60,33 +56,16 @@ STATE_MARK = "📊 REYTING MA'LUMOTLARI (o'chirmang, unpin qilmang)"
 
 def _card() -> str:
     """Topshiriq matni — yo'nalish beradi, lekin yechimni oshkor qilmaydi."""
-    if TASK_TYPE == "rev":
-        lines = [
-            "🔐 <b>Zafar Corp — Yo'qolgan seyf kaliti</b>",
-            "📂 Kategoriya: <b>REVERSE</b> · Qiyinlik: <b>Medium</b>",
-            "",
-            "Zafar Corp dasturchisi seyf dasturini yozib, kalitni esdan chiqarib "
-            "qo'ydi. Dastur faqat to'g'ri kalitni qabul qiladi — kalit esa "
-            "dastur ichida qayerdadir yashiringan. 🕵️",
-            "",
-            "Dasturni ochib ko'r, uning qanday tekshirishini tushun — kalit o'zi "
-            "chiqib keladi. 🔑 (Linux x86-64)",
-            "",
-            "🚩 Flag formati: <code>CTF{...}</code>",
-        ]
-        if DEADLINE:
-            lines.append(f"⏰ Muddat: {html.escape(DEADLINE)}")
-        return "\n".join(lines)
     lines = [
-        "🏢 <b>Zafar Corp — Ichki Portal</b>",
-        "📂 Kategoriya: <b>WEB</b> · Qiyinlik: <b>Medium</b>",
+        "🔐 <b>Zafar Corp — Yo'qolgan seyf kaliti</b>",
+        "📂 Kategoriya: <b>REVERSE</b> · Qiyinlik: <b>Medium</b>",
         "",
-        "\"Zafar Corp\" kompaniyasining ichki boshqaruv paneli tasodifan "
-        "internetga ochilib qolgan. Oddiy xodim darajasida kirish mumkin — "
-        "lekin eng qimmatli sir faqat <b>administrator</b> ko'radigan joyda "
-        "yashiringan. 🕵️",
+        "Zafar Corp dasturchisi seyf dasturini yozib, kalitni esdan chiqarib "
+        "qo'ydi. Dastur faqat to'g'ri kalitni qabul qiladi — kalit esa "
+        "dastur ichida qayerdadir yashiringan. 🕵️",
         "",
-        "Eshikni top, ichkariga kir — qolgani o'zingga bog'liq. 🔑",
+        "Dasturni ochib ko'r, uning qanday tekshirishini tushun — kalit o'zi "
+        "chiqib keladi. 🔑 (Linux x86-64)",
         "",
         "🚩 Flag formati: <code>CTF{...}</code>",
     ]
@@ -100,24 +79,18 @@ CARD = _card()
 TEXTS = {
     "start": (
         CARD + "\n\n"
-        "1️⃣ Shaxsiy havola olish: /boshla\n"
+        "1️⃣ Shaxsiy dasturni olish: /boshla\n"
         "2️⃣ Topgan flagingizni shu yerga yuboring\n"
         "🏆 Reyting: /reyting"
     ),
     "boshla": (
-        CARD + "\n\n"
-        "🔗 <b>Sizning shaxsiy havolangiz:</b>\n{link}\n\n"
-        "⚠️ Bu havola faqat sizniki. Flagingiz ham shaxsiy — boshqaga bermang, "
-        "aks holda kim bergani aniqlanadi!"
-    ),
-    "boshla_rev": (
         CARD + "\n\n"
         "📦 <b>Sizning shaxsiy seyf dasturingiz</b> yuqorida.\n"
         "Ishga tushirish: <code>chmod +x seyf && ./seyf</code>\n\n"
         "⚠️ Bu fayl faqat sizniki. Ichidagi flag ham shaxsiy — boshqaga bermang, "
         "aks holda kim bergani aniqlanadi!"
     ),
-    "need_start": "Avval /boshla yozing — sizga shaxsiy havola beraman. 🔗",
+    "need_start": "Avval /boshla yozing — sizga shaxsiy dastur beraman. 📦",
     "first_blood": (
         "🩸 <b>FIRST BLOOD!</b> 🩸\n\n"
         "Tabriklayman, {name}! Siz birinchi bo'lib yechdingiz!\n"
@@ -131,11 +104,6 @@ TEXTS = {
     "shared": (
         "🚨 Bu flag <b>sizniki emas</b> — boshqa ishtirokchiga tegishli.\n"
         "Har kimning flagi shaxsiy! O'z flagingizni toping: /boshla"
-    ),
-    "demo": (
-        "😄 Bu <b>demo flag</b>, yigitcha!\n"
-        "Saytga shaxsiy havolasiz kirgansiz. O'z flagingiz uchun /boshla yozing "
-        "va <b>shaxsiy havolangiz</b> orqali qaytadan kiring."
     ),
     "wrong": "❌ Noto'g'ri flag. Yana urinib ko'ring!",
     "empty": "🏆 Reyting hozircha bo'sh. Birinchi bo'lib yech va 🩸 First Blood ol!",
@@ -151,17 +119,9 @@ def clean(text: str) -> str:
 
 
 def flag_for(uid: str, secret: bytes) -> str:
-    """Ishtirokchining shaxsiy flagi (sayt bilan bir xil formula)."""
+    """Ishtirokchining shaxsiy flagi."""
     digest = hmac.new(secret, uid.encode(), hashlib.sha256).hexdigest()
     return "CTF{" + FLAG_PREFIX + digest[:12] + "}"
-
-
-def link_sig(uid: str, secret: bytes) -> str:
-    return hmac.new(secret, uid.encode(), hashlib.sha256).hexdigest()[:6]
-
-
-def challenge_link(uid: str, site_url: str, link_secret: bytes) -> str:
-    return f"{site_url.rstrip('/')}/?t={uid}-{link_sig(uid, link_secret)}"
 
 
 def leaderboard(solves: list[dict], admin: bool = False) -> str:
@@ -288,14 +248,12 @@ class Store:
             logging.warning("holat saqlanmadi: %s", type(e).__name__)
 
 
-def build(flag_secret: bytes, link_secret: bytes, site_url: str,
-          admin_id: int | None, announce_id: int | None, store: Store) -> Dispatcher:
+def build(flag_secret: bytes, admin_id: int | None, announce_id: int | None,
+          store: Store) -> Dispatcher:
     lock = asyncio.Lock()
     dp = Dispatcher()
-    rev_template = b""
-    if TASK_TYPE == "rev":
-        with open(REV_TEMPLATE, "rb") as f:
-            rev_template = f.read()
+    with open(REV_TEMPLATE, "rb") as f:
+        rev_template = f.read()
 
     def find_user(uid: str) -> dict | None:
         for rec in store.solves:
@@ -317,22 +275,16 @@ def build(flag_secret: bytes, link_secret: bytes, site_url: str,
     async def start(m: Message) -> None:
         await m.answer(TEXTS["start"])
 
-    @dp.message(Command("boshla", "challenge", "havola"))
+    @dp.message(Command("boshla", "challenge"))
     async def boshla(m: Message) -> None:
         uid = str(m.from_user.id)
         async with lock:
             if uid not in store.participants:
                 store.participants.add(uid)
                 await store.save()
-        if TASK_TYPE == "rev":
-            data = build_binary(rev_template, flag_for(uid, flag_secret))
-            await m.answer_document(BufferedInputFile(data, filename="seyf"))
-            await m.answer(TEXTS["boshla_rev"])
-            return
-        link = challenge_link(uid, site_url, link_secret)
-        # .format() ishlatmaymiz: topshiriq matnidagi CTF{...} qavslari buzadi
-        text = TEXTS["boshla"].replace("{link}", html.escape(link))
-        await m.answer(text, disable_web_page_preview=True)
+        data = build_binary(rev_template, flag_for(uid, flag_secret))
+        await m.answer_document(BufferedInputFile(data, filename="seyf"))
+        await m.answer(TEXTS["boshla"])
 
     @dp.message(Command("reyting", "reyt", "scoreboard", "top"))
     async def rating(m: Message) -> None:
@@ -359,10 +311,6 @@ def build(flag_secret: bytes, link_secret: bytes, site_url: str,
 
         # O'z flagi emasmi? (share aniqlash)
         if submitted != expected:
-            # Demo flag (saytga havolasiz kirganda chiqadi) — do'stona ogohlantirish
-            if submitted == flag_for("demo", flag_secret):
-                await m.answer(TEXTS["demo"])
-                return
             owner = owner_of(submitted)
             if owner is not None and owner != uid:
                 logging.warning("shared flag: submitter=%s owner=%s", uid, owner)
@@ -453,12 +401,8 @@ async def main() -> None:
     if not token:
         sys.exit("CHECKER_TOKEN o'rnatilmagan")
     flag_secret = os.environ.get("FLAG_SECRET", "").encode()
-    link_secret = os.environ.get("LINK_SECRET", "").encode()
     if not flag_secret:
         sys.exit("FLAG_SECRET o'rnatilmagan")
-    if TASK_TYPE != "rev" and not link_secret:
-        sys.exit("LINK_SECRET o'rnatilmagan (saytdagi bilan bir xil bo'lsin)")
-    site_url = os.environ.get("SITE_URL", "http://localhost:8080")
     admin_id, announce_id = chat_id("ADMIN_CHAT_ID"), chat_id("ANNOUNCE_CHAT_ID")
     logging.basicConfig(level=logging.INFO)
     if admin_id is None:
@@ -467,7 +411,7 @@ async def main() -> None:
     bot = Bot(token, default=DefaultBotProperties(parse_mode="HTML"))
     store = Store(bot, admin_id)
     await store.load()
-    dp = build(flag_secret, link_secret, site_url, admin_id, announce_id, store)
+    dp = build(flag_secret, admin_id, announce_id, store)
 
     run_seconds = int(os.environ.get("RUN_SECONDS", "0"))
     if run_seconds > 0:
