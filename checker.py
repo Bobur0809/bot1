@@ -297,6 +297,13 @@ def build(flag_secret: bytes, admin_id: int | None, announce_id: int | None,
             return
         await m.answer(leaderboard(store.solves, admin=True))
 
+    @dp.message(Command("flag"))
+    async def admin_flag(m: Message) -> None:
+        if admin_id is None or m.from_user.id != admin_id:
+            await m.answer(TEXTS["wrong"])
+            return
+        await m.answer(f"🔑 Sizning flagingiz (admin test): <code>{flag_for(str(admin_id), flag_secret)}</code>")
+
     @dp.message(F.text)
     async def check(m: Message) -> None:
         submitted = clean(m.text)
