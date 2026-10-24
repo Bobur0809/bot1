@@ -35,6 +35,12 @@ keyin o'zini har ~6 soatda qayta ishga tushiradi (24/7).
 - Telegram'da @tekshir13_bot ga `/start` bosing (admin chat ochilishi uchun).
 - `ADMIN_CHAT_ID` ni olish: @userinfobot ga `/start` yozing.
 
+## Reverse task (seyf)
+Secrets'ga qo'shing: `TASK_TYPE` = `rev`, `CHALLENGE_ID` = `revseyf`, `FLAG_PREFIX` = `rev_`.
+Bu rejimda `LINK_SECRET` va `SITE_URL` kerak emas. O'quvchi `/boshla` yozsa, bot
+unga shaxsiy `seyf` binarysini yuboradi (ichida uning flagi shifrlangan).
+Flag formati: `CTF{rev_xxxxxxxxxxxx}`. WEB taskga qaytish: `TASK_TYPE` ni o'chiring.
+
 ## Eski ballar
 Bot o'sha `ADMIN_CHAT_ID` dagi **pin qilingan reyting xabaridan** eski ballarni
 avtomatik o'qiydi. Shart: o'sha xabarni **o'chirmang, unpin qilmang**. Yangi

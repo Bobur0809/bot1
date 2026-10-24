@@ -33,7 +33,9 @@ from datetime import datetime, timedelta, timezone
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message
+from aiogram.types import BufferedInputFile, Message
+
+from rev_patch import build_binary
 
 try:
     from zoneinfo import ZoneInfo
@@ -49,12 +51,32 @@ MIN_POINTS = int(os.environ.get("MIN_POINTS", "100"))
 OLD_STEP = int(os.environ.get("OLD_POINTS_STEP", "50"))
 CHALLENGE_ID = os.environ.get("CHALLENGE_ID", "webctf")
 DEADLINE = os.environ.get("DEADLINE", "").strip()
+TASK_TYPE = os.environ.get("TASK_TYPE", "web").strip().lower()
+FLAG_PREFIX = os.environ.get("FLAG_PREFIX", "zafar_").strip() or "zafar_"
+REV_TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "revtask", "seyf_template")
 
 STATE_MARK = "📊 REYTING MA'LUMOTLARI (o'chirmang, unpin qilmang)"
 
 
 def _card() -> str:
     """Topshiriq matni — yo'nalish beradi, lekin yechimni oshkor qilmaydi."""
+    if TASK_TYPE == "rev":
+        lines = [
+            "🔐 <b>Zafar Corp — Yo'qolgan seyf kaliti</b>",
+            "📂 Kategoriya: <b>REVERSE</b> · Qiyinlik: <b>Medium</b>",
+            "",
+            "Zafar Corp dasturchisi seyf dasturini yozib, kalitni esdan chiqarib "
+            "qo'ydi. Dastur faqat to'g'ri kalitni qabul qiladi — kalit esa "
+            "dastur ichida qayerdadir yashiringan. 🕵️",
+            "",
+            "Dasturni ochib ko'r, uning qanday tekshirishini tushun — kalit o'zi "
+            "chiqib keladi. 🔑 (Linux x86-64)",
+            "",
+            "🚩 Flag formati: <code>CTF{...}</code>",
+        ]
+        if DEADLINE:
+            lines.append(f"⏰ Muddat: {html.escape(DEADLINE)}")
+        return "\n".join(lines)
     lines = [
         "🏢 <b>Zafar Corp — Ichki Portal</b>",
         "📂 Kategoriya: <b>WEB</b> · Qiyinlik: <b>Medium</b>",
@@ -86,6 +108,13 @@ TEXTS = {
         CARD + "\n\n"
         "🔗 <b>Sizning shaxsiy havolangiz:</b>\n{link}\n\n"
         "⚠️ Bu havola faqat sizniki. Flagingiz ham shaxsiy — boshqaga bermang, "
+        "aks holda kim bergani aniqlanadi!"
+    ),
+    "boshla_rev": (
+        CARD + "\n\n"
+        "📦 <b>Sizning shaxsiy seyf dasturingiz</b> yuqorida.\n"
+        "Ishga tushirish: <code>chmod +x seyf && ./seyf</code>\n\n"
+        "⚠️ Bu fayl faqat sizniki. Ichidagi flag ham shaxsiy — boshqaga bermang, "
         "aks holda kim bergani aniqlanadi!"
     ),
     "need_start": "Avval /boshla yozing — sizga shaxsiy havola beraman. 🔗",
@@ -124,7 +153,7 @@ def clean(text: str) -> str:
 def flag_for(uid: str, secret: bytes) -> str:
     """Ishtirokchining shaxsiy flagi (sayt bilan bir xil formula)."""
     digest = hmac.new(secret, uid.encode(), hashlib.sha256).hexdigest()
-    return "CTF{zafar_" + digest[:12] + "}"
+    return "CTF{" + FLAG_PREFIX + digest[:12] + "}"
 
 
 def link_sig(uid: str, secret: bytes) -> str:
@@ -263,6 +292,10 @@ def build(flag_secret: bytes, link_secret: bytes, site_url: str,
           admin_id: int | None, announce_id: int | None, store: Store) -> Dispatcher:
     lock = asyncio.Lock()
     dp = Dispatcher()
+    rev_template = b""
+    if TASK_TYPE == "rev":
+        with open(REV_TEMPLATE, "rb") as f:
+            rev_template = f.read()
 
     def find_user(uid: str) -> dict | None:
         for rec in store.solves:
@@ -291,6 +324,11 @@ def build(flag_secret: bytes, link_secret: bytes, site_url: str,
             if uid not in store.participants:
                 store.participants.add(uid)
                 await store.save()
+        if TASK_TYPE == "rev":
+            data = build_binary(rev_template, flag_for(uid, flag_secret))
+            await m.answer_document(BufferedInputFile(data, filename="seyf"))
+            await m.answer(TEXTS["boshla_rev"])
+            return
         link = challenge_link(uid, site_url, link_secret)
         # .format() ishlatmaymiz: topshiriq matnidagi CTF{...} qavslari buzadi
         text = TEXTS["boshla"].replace("{link}", html.escape(link))
@@ -416,8 +454,10 @@ async def main() -> None:
         sys.exit("CHECKER_TOKEN o'rnatilmagan")
     flag_secret = os.environ.get("FLAG_SECRET", "").encode()
     link_secret = os.environ.get("LINK_SECRET", "").encode()
-    if not flag_secret or not link_secret:
-        sys.exit("FLAG_SECRET va LINK_SECRET o'rnatilmagan (saytdagi bilan bir xil bo'lsin)")
+    if not flag_secret:
+        sys.exit("FLAG_SECRET o'rnatilmagan")
+    if TASK_TYPE != "rev" and not link_secret:
+        sys.exit("LINK_SECRET o'rnatilmagan (saytdagi bilan bir xil bo'lsin)")
     site_url = os.environ.get("SITE_URL", "http://localhost:8080")
     admin_id, announce_id = chat_id("ADMIN_CHAT_ID"), chat_id("ANNOUNCE_CHAT_ID")
     logging.basicConfig(level=logging.INFO)
