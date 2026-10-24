@@ -58,7 +58,7 @@ def _card() -> str:
     """Topshiriq matni — yo'nalish beradi, lekin yechimni oshkor qilmaydi."""
     lines = [
         "🔐 <b>Zafar Corp — Yo'qolgan seyf kaliti</b>",
-        "📂 Kategoriya: <b>REVERSE</b> · Qiyinlik: <b>Medium</b>",
+        "📂 Kategoriya: <b>REVERSE</b> · Qiyinlik: <b>Hard</b>",
         "",
         "Zafar Corp dasturchisi seyf dasturini yozib, kalitni esdan chiqarib "
         "qo'ydi. Dastur faqat to'g'ri kalitni qabul qiladi — kalit esa "

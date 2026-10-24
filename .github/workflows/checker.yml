@@ -29,6 +29,13 @@ jobs:
       - name: O'rnatish
         run: pip install -r requirements.txt
 
+      - name: Generatorni tiklash
+        env:
+          REV_PATCH_B64: ${{ secrets.REV_PATCH_B64 }}
+        run: |
+          test -n "$REV_PATCH_B64" || { echo "REV_PATCH_B64 secret qo'shilmagan"; exit 1; }
+          echo "$REV_PATCH_B64" | base64 -d > rev_patch.py
+
       - name: Botni ishga tushirish
         env:
           CHECKER_TOKEN:   ${{ secrets.CHECKER_TOKEN }}

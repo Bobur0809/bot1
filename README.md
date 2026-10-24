@@ -22,6 +22,7 @@ Repo → **Settings → Secrets and variables → Actions → New repository sec
 | `ADMIN_CHAT_ID` | Sizning Telegram ID (signal + reyting saqlanadi) | ✅ |
 | `ANNOUNCE_CHAT_ID` | First Blood e'loni uchun kanal/guruh | ⬜ |
 | `DEADLINE` | Muddat matni (topshiriqda ko'rsatiladi) | ⬜ |
+| `REV_PATCH_B64` | `rev_patch.py` generatorining base64 ko'rinishi (repoda yo'q, yechim sir qolsin) | ✅ |
 
 Task nomi (`CHALLENGE_ID`) workflow faylida yozilgan: `revseyf`.
 
@@ -40,7 +41,7 @@ task ballari har o'quvchining jamiga qo'shiladi.
 
 ## Fayllar
 - `checker.py` — bot
-- `rev_patch.py` — shablon binaryga shaxsiy flagni yozadi
+- `rev_patch.py` — shaxsiy binary generatori (repoda emas, `REV_PATCH_B64` secret'dan tiklanadi)
 - `revtask/seyf_template` — seyf dasturining shabloni
 - `requirements.txt` — aiogram
 - `.github/workflows/checker.yml` — 24/7 ishga tushirish
