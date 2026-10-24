@@ -68,9 +68,6 @@ def _card() -> str:
             "mumkin (login/parol do'kon sahifasida ko'rsatilgan). Do'kon ichida bir "
             "sir yashiringan — uni topgan g'olib. 🕵️",
             "",
-            "💡 Ba'zilar darrov \"eshikni buzishga\" urinadi. Balki shunchaki mijoz "
-            "bo'lib, do'konni sinchiklab <b>ishlatgan</b> ma'qulmi? 🧾",
-            "",
             "🚩 Flag formati: <code>CTF{...}</code>",
         ]
         if DEADLINE:
