@@ -19,6 +19,8 @@ jobs:
   run:
     runs-on: ubuntu-latest
     timeout-minutes: 355
+    env:
+      TASK_TYPE: web        # web = 64base shop havola; rev = seyf binary
     steps:
       - uses: actions/checkout@v4
 
@@ -29,8 +31,9 @@ jobs:
       - name: O'rnatish
         run: pip install -r requirements.txt
 
-      - name: Generatorni tiklash
+      - name: Generatorni tiklash (faqat rev task)
         id: gen
+        if: ${{ env.TASK_TYPE == 'rev' }}
         env:
           REV_PATCH_B64: ${{ secrets.REV_PATCH_B64 }}
         run: |
@@ -38,14 +41,20 @@ jobs:
           echo "$REV_PATCH_B64" | base64 -d > rev_patch.py
 
       - name: Botni ishga tushirish
+        id: bot
         env:
-          CHECKER_TOKEN:   ${{ secrets.CHECKER_TOKEN }}
-          FLAG_SECRET:     ${{ secrets.FLAG_SECRET }}
+          CHECKER_TOKEN:    ${{ secrets.CHECKER_TOKEN }}
+          FLAG_SECRET:      ${{ secrets.FLAG_SECRET }}
+          LINK_SECRET:      ${{ secrets.LINK_SECRET }}   # web: saytdagi bilan bir xil
+          SITE_URL:         ${{ secrets.SITE_URL }}      # web: https://base64-shop.onrender.com
+          TASK_TYPE:        web
+          FLAG_PREFIX:      shop_
           # Task nomi: yangi task qo'shilganda shu yerni o'zgartiring (eski ballar saqlanadi)
-          CHALLENGE_ID:    "revseyf"
-          ADMIN_CHAT_ID:   ${{ secrets.ADMIN_CHAT_ID }}
+          CHALLENGE_ID:     webshop
+          ADMIN_CHAT_ID:    ${{ secrets.ADMIN_CHAT_ID }}
           ANNOUNCE_CHAT_ID: ${{ secrets.ANNOUNCE_CHAT_ID }}
-          DEADLINE:        ${{ secrets.DEADLINE }}          # Ball formulasi: 1-o'rin MAX, har keyingi -STEP, MIN'dan kam emas
+          DEADLINE:         ${{ secrets.DEADLINE }}
+          # Ball formulasi: 1-o'rin MAX, har keyingi -STEP, MIN'dan kam emas
           MAX_POINTS: "500"
           POINTS_STEP: "10"
           MIN_POINTS: "100"
@@ -55,8 +64,8 @@ jobs:
         run: python checker.py
 
       - name: Keyingi runni ulash (zanjir)
-        # Bekor qilinganda yoki secret yo'q bo'lsa qayta ishga tushmaydi (cheksiz aylanmasin)
-        if: ${{ !cancelled() && steps.gen.outcome == 'success' }}
+        # Bot xatosiz tugasa (muddat) ulaydi; xato/bekor bo'lsa ulamaydi (cheksiz aylanmasin)
+        if: ${{ !cancelled() && steps.bot.outcome == 'success' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh workflow run checker.yml

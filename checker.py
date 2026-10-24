@@ -32,8 +32,6 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.filters import Command, CommandStart
 from aiogram.types import BufferedInputFile, Message
 
-from rev_patch import build_binary
-
 try:
     from zoneinfo import ZoneInfo
 
@@ -46,16 +44,38 @@ STEP = int(os.environ.get("POINTS_STEP", "10"))
 MIN_POINTS = int(os.environ.get("MIN_POINTS", "100"))
 # Eski ballarni qayta hisoblash uchun eski STEP (bir martaga ishlaydi).
 OLD_STEP = int(os.environ.get("OLD_POINTS_STEP", "50"))
-CHALLENGE_ID = os.environ.get("CHALLENGE_ID", "").strip() or "revseyf"
+CHALLENGE_ID = os.environ.get("CHALLENGE_ID", "").strip() or "webshop"
 DEADLINE = os.environ.get("DEADLINE", "").strip()
-FLAG_PREFIX = "rev_"
+TASK_TYPE = os.environ.get("TASK_TYPE", "web").strip().lower()
+FLAG_PREFIX = os.environ.get("FLAG_PREFIX", "shop_").strip() or "shop_"
+SITE_URL = os.environ.get("SITE_URL", "").strip()
 REV_TEMPLATE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "revtask", "seyf_template")
+
+# Web task do'konidagi TUZOQ (soxta) flaglar — bot ularni rad etadi
+FAKE_FLAGS = {"CTF{64base_sql_bypass_ok}", "CTF{64base_admin_panel_root}"}
 
 STATE_MARK = "📊 REYTING MA'LUMOTLARI (o'chirmang, unpin qilmang)"
 
 
 def _card() -> str:
     """Topshiriq matni — yo'nalish beradi, lekin yechimni oshkor qilmaydi."""
+    if TASK_TYPE == "web":
+        lines = [
+            "🛒 <b>64base shop — ichki sir</b>",
+            "📂 Kategoriya: <b>WEB</b> · Qiyinlik: <b>Medium</b>",
+            "",
+            "\"64base shop\" onlayn do'koni ishga tushdi. Oddiy mijoz bo'lib kirish "
+            "mumkin (login/parol do'kon sahifasida ko'rsatilgan). Do'kon ichida bir "
+            "sir yashiringan — uni topgan g'olib. 🕵️",
+            "",
+            "💡 Ba'zilar darrov \"eshikni buzishga\" urinadi. Balki shunchaki mijoz "
+            "bo'lib, do'konni sinchiklab <b>ishlatgan</b> ma'qulmi? 🧾",
+            "",
+            "🚩 Flag formati: <code>CTF{...}</code>",
+        ]
+        if DEADLINE:
+            lines.append(f"⏰ Muddat: {html.escape(DEADLINE)}")
+        return "\n".join(lines)
     lines = [
         "🔐 <b>Zafar Corp — Yo'qolgan seyf kaliti</b>",
         "📂 Kategoriya: <b>REVERSE</b> · Qiyinlik: <b>Hard</b>",
@@ -90,7 +110,17 @@ TEXTS = {
         "⚠️ Bu fayl faqat sizniki. Ichidagi flag ham shaxsiy — boshqaga bermang, "
         "aks holda kim bergani aniqlanadi!"
     ),
-    "need_start": "Avval /boshla yozing — sizga shaxsiy dastur beraman. 📦",
+    "boshla_web": (
+        CARD + "\n\n"
+        "🔗 <b>Sizning shaxsiy havolangiz:</b>\n{link}\n\n"
+        "⚠️ Bu havola faqat sizniki. Flagingiz ham shaxsiy — boshqaga bermang, "
+        "aks holda kim bergani aniqlanadi!"
+    ),
+    "fake": (
+        "😏 Bu <b>soxta flag</b> — tuzoqqa tushdingiz!\n"
+        "Haqiqiy flag do'konni <b>ishlatib</b> topiladi, buzib emas. 🧾"
+    ),
+    "need_start": "Avval /boshla yozing — sizga shaxsiy havola beraman. 🔗",
     "first_blood": (
         "🩸 <b>FIRST BLOOD!</b> 🩸\n\n"
         "Tabriklayman, {name}! Siz birinchi bo'lib yechdingiz!\n"
@@ -122,6 +152,14 @@ def flag_for(uid: str, secret: bytes) -> str:
     """Ishtirokchining shaxsiy flagi."""
     digest = hmac.new(secret, uid.encode(), hashlib.sha256).hexdigest()
     return "CTF{" + FLAG_PREFIX + digest[:12] + "}"
+
+
+def link_sig(uid: str, secret: bytes) -> str:
+    return hmac.new(secret, uid.encode(), hashlib.sha256).hexdigest()[:6]
+
+
+def challenge_link(uid: str, site_url: str, link_secret: bytes) -> str:
+    return f"{site_url.rstrip('/')}/?t={uid}-{link_sig(uid, link_secret)}"
 
 
 def leaderboard(solves: list[dict], admin: bool = False) -> str:
@@ -248,12 +286,17 @@ class Store:
             logging.warning("holat saqlanmadi: %s", type(e).__name__)
 
 
-def build(flag_secret: bytes, admin_id: int | None, announce_id: int | None,
-          store: Store) -> Dispatcher:
+def build(flag_secret: bytes, link_secret: bytes, site_url: str,
+          admin_id: int | None, announce_id: int | None, store: Store) -> Dispatcher:
     lock = asyncio.Lock()
     dp = Dispatcher()
-    with open(REV_TEMPLATE, "rb") as f:
-        rev_template = f.read()
+    rev_template = b""
+    build_binary = None
+    if TASK_TYPE == "rev":
+        from rev_patch import build_binary as _bb
+        build_binary = _bb
+        with open(REV_TEMPLATE, "rb") as f:
+            rev_template = f.read()
 
     def find_user(uid: str) -> dict | None:
         for rec in store.solves:
@@ -282,6 +325,11 @@ def build(flag_secret: bytes, admin_id: int | None, announce_id: int | None,
             if uid not in store.participants:
                 store.participants.add(uid)
                 await store.save()
+        if TASK_TYPE == "web":
+            link = challenge_link(uid, site_url, link_secret)
+            text = TEXTS["boshla_web"].replace("{link}", html.escape(link))
+            await m.answer(text, disable_web_page_preview=True)
+            return
         data = build_binary(rev_template, flag_for(uid, flag_secret))
         await m.answer_document(BufferedInputFile(data, filename="seyf"))
         await m.answer(TEXTS["boshla"])
@@ -318,6 +366,9 @@ def build(flag_secret: bytes, admin_id: int | None, announce_id: int | None,
 
         # O'z flagi emasmi? (share aniqlash)
         if submitted != expected:
+            if submitted in FAKE_FLAGS:
+                await m.answer(TEXTS["fake"])
+                return
             owner = owner_of(submitted)
             if owner is not None and owner != uid:
                 logging.warning("shared flag: submitter=%s owner=%s", uid, owner)
@@ -410,6 +461,9 @@ async def main() -> None:
     flag_secret = os.environ.get("FLAG_SECRET", "").encode()
     if not flag_secret:
         sys.exit("FLAG_SECRET o'rnatilmagan")
+    link_secret = os.environ.get("LINK_SECRET", "").encode()
+    if TASK_TYPE == "web" and (not link_secret or not SITE_URL):
+        sys.exit("Web rejimi uchun LINK_SECRET va SITE_URL kerak (saytdagi bilan bir xil)")
     admin_id, announce_id = chat_id("ADMIN_CHAT_ID"), chat_id("ANNOUNCE_CHAT_ID")
     logging.basicConfig(level=logging.INFO)
     if admin_id is None:
@@ -418,7 +472,7 @@ async def main() -> None:
     bot = Bot(token, default=DefaultBotProperties(parse_mode="HTML"))
     store = Store(bot, admin_id)
     await store.load()
-    dp = build(flag_secret, admin_id, announce_id, store)
+    dp = build(flag_secret, link_secret, SITE_URL, admin_id, announce_id, store)
 
     run_seconds = int(os.environ.get("RUN_SECONDS", "0"))
     if run_seconds > 0:
