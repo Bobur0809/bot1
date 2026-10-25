@@ -340,20 +340,51 @@ def build(flag_secret: bytes, link_secret: bytes, site_url: str,
         await m.answer(leaderboard(store.solves, admin=True))
 
     @dp.message(Command("ochir"))
-    async def admin_remove(m: Message, command: CommandObject) -> None:
+    async def admin_deduct(m: Message, command: CommandObject) -> None:
         if admin_id is None or m.from_user.id != admin_id:
             await m.answer(TEXTS["wrong"])
             return
-        target = (command.args or "").strip()
+        parts = (command.args or "").split()
+        if len(parts) != 2 or not parts[1].isdigit():
+            await m.answer("Format: <code>/ochir ID BALL</code>")
+            return
+        target, pts = parts[0], int(parts[1])
         async with lock:
-            before = len(store.solves)
-            store.solves = [r for r in store.solves if str(r.get("id")) != target]
-            store.participants.discard(target)
-            removed = before - len(store.solves)
-            if removed:
-                await store.save()
-        await m.answer(f"🗑 ID <code>{html.escape(target)}</code> o'chirildi." if removed
-                       else f"ID <code>{html.escape(target)}</code> topilmadi.")
+            rec = next((r for r in store.solves if str(r.get("id")) == target), None)
+            if rec is None:
+                await m.answer(f"ID <code>{html.escape(target)}</code> topilmadi.")
+                return
+            rec["total"] = max(0, rec.get("total", 0) - pts)
+            await store.save()
+            total = rec["total"]
+        await m.answer(f"➖ ID <code>{html.escape(target)}</code>: -{pts} ball. Jami: <b>{total}</b>")
+
+    @dp.message(Command("qosh"))
+    async def admin_restore(m: Message, command: CommandObject) -> None:
+        if admin_id is None or m.from_user.id != admin_id:
+            await m.answer(TEXTS["wrong"])
+            return
+        parts = (command.args or "").split(maxsplit=2)
+        if len(parts) < 2 or not parts[1].isdigit():
+            await m.answer("Format: <code>/qosh ID BALL [ISM]</code>")
+            return
+        target, pts = parts[0], int(parts[1])
+        name = html.escape(parts[2]) if len(parts) == 3 else None
+        async with lock:
+            rec = next((r for r in store.solves if str(r.get("id")) == target), None)
+            if rec is None:
+                rec = {"id": target, "name": name or "?", "user": "", "total": 0,
+                       "solved": [CHALLENGE_ID], "t": datetime.now(TZ).isoformat()}
+                store.solves.append(rec)
+            elif name:
+                rec["name"] = name
+            rec["total"] = rec.get("total", 0) + pts
+            if CHALLENGE_ID not in rec.setdefault("solved", []):
+                rec["solved"].append(CHALLENGE_ID)
+            store.participants.add(target)
+            await store.save()
+            total = rec["total"]
+        await m.answer(f"➕ ID <code>{html.escape(target)}</code>: +{pts} ball. Jami: <b>{total}</b>")
 
     @dp.message(Command("flag"))
     async def admin_flag(m: Message) -> None:
