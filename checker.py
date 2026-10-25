@@ -29,7 +29,7 @@ from datetime import datetime, timedelta, timezone
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.client.default import DefaultBotProperties
-from aiogram.filters import Command, CommandStart
+from aiogram.filters import Command, CommandObject, CommandStart
 from aiogram.types import BufferedInputFile, Message
 
 try:
@@ -338,6 +338,22 @@ def build(flag_secret: bytes, link_secret: bytes, site_url: str,
             await m.answer(TEXTS["wrong"])
             return
         await m.answer(leaderboard(store.solves, admin=True))
+
+    @dp.message(Command("ochir"))
+    async def admin_remove(m: Message, command: CommandObject) -> None:
+        if admin_id is None or m.from_user.id != admin_id:
+            await m.answer(TEXTS["wrong"])
+            return
+        target = (command.args or "").strip()
+        async with lock:
+            before = len(store.solves)
+            store.solves = [r for r in store.solves if str(r.get("id")) != target]
+            store.participants.discard(target)
+            removed = before - len(store.solves)
+            if removed:
+                await store.save()
+        await m.answer(f"🗑 ID <code>{html.escape(target)}</code> o'chirildi." if removed
+                       else f"ID <code>{html.escape(target)}</code> topilmadi.")
 
     @dp.message(Command("flag"))
     async def admin_flag(m: Message) -> None:
